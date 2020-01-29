@@ -114,6 +114,8 @@ L.Polyline.include({
     const startZoom = this._map.getZoom();
     targetZoom = targetZoom === undefined ? startZoom : targetZoom;
 
+    if (this._flyToNext) this._stop();
+
     if (options.animate === false || !L.Browser.any3d) {
       return this._map.setView(targetCenter, targetZoom, options);
     }
@@ -122,8 +124,17 @@ L.Polyline.include({
     const startCenter = this._map.getCenter();
     const points = getLatLngsFlatten(this);
 
-    const [startLatLng, startIndex] = closestLatlng(points, startCenter);
-    const [endLatLng, endIndex] = closestLatlng(points, targetCenter);
+    // eslint-disable-next-line prefer-const
+    let [startLatLng, startIndex] = closestLatlng(points, startCenter);
+    // eslint-disable-next-line prefer-const
+    let [endLatLng, endIndex] = closestLatlng(points, targetCenter);
+
+    if (startIndex > endIndex) {
+      points.reverse();
+      startIndex = points.length - startIndex - 1;
+      endIndex = points.length - endIndex - 1;
+    }
+
     const flyDistance = getLength(points, startIndex, endIndex);
     const keyframesFlyIndexes = splitByLength(points, flyDistance / (duration * 10), startIndex, endIndex);
     const keyframesNumber = keyframesFlyIndexes.length;

@@ -20,8 +20,12 @@
   <div id="map" style="position: absolute; top:0px; left: 0px; bottom: 0px; right: 0px;"></div>
 
   <script>
+    var map;
+    var track1;
+    var polyline;
+
     window.onload = function () {
-      var map = L.map('map', {
+      map = L.map('map', {
         center: L.latLng(44.987301, 6.079355),
         zoom: 13,
       });
@@ -31,7 +35,7 @@
       var osm = new L.TileLayer(osmUrl, { attribution: osmAttrib });
       map.addLayer(osm);
 
-      var track1 = [
+      track1 = [
         [44.987301, 6.079355],
         [44.987295, 6.079353],
         [44.98729, 6.079383],
@@ -1548,7 +1552,7 @@
         [44.987301, 6.079355],
       ];
 
-      var polyline = L.polyline(track1);
+      polyline = L.polyline(track1);
       polyline.addTo(map);
 
       polyline.on('FlyAlong:movestart', function () {
@@ -1561,6 +1565,11 @@
       polyline.flyTo(L.latLng(44.988528, 6.078066), 15, { duration: 10 });
       // setTimeout(function () { polyline._stop(); }, 5000);
     };
+    function fly() {
+      var zoom = (Math.random() > 0.5 ? (Math.random() > 0.5 ? 13 : 17) : 15);
+      var destination = track1[Math.floor(Math.random() * track1.length)];
+      polyline.flyTo(L.latLng(destination[0], destination[1]), zoom, { duration: 10 });
+    }
   </script>
 </body>
 

@@ -71,6 +71,12 @@ var _interopRequireDefault = _dereq_("@babel/runtime/helpers/interopRequireDefau
 var _slicedToArray2 = _interopRequireDefault(_dereq_("@babel/runtime/helpers/slicedToArray"));
 
 var L = (typeof window !== "undefined" ? window['L'] : typeof global !== "undefined" ? global['L'] : null);
+/**
+ * Returns a flat array of L.LatLng objects
+ * @param L.Polyline polyline Polyline object
+ * @returns L.LatLng[] Flat array
+ */
+
 
 function getLatLngsFlatten(polyline) {
   var latlngs = polyline.getLatLngs();
@@ -87,6 +93,15 @@ function getLatLngsFlatten(polyline) {
 
   return latlngs;
 }
+/**
+ * Returns the (estimated) distance of a path in meters.
+ * This is not a precise value, it just gives a rough estimate.
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param Number startIndex First index to use in the array (optional, defaults to first element)
+ * @param Number endIndex Last index to use in the array (optional, defaults to last element)
+ * @returns Number Distance in meters
+ */
+
 
 function getLength(points, startIndex, endIndex) {
   var start = startIndex === undefined ? 0 : startIndex;
@@ -99,6 +114,15 @@ function getLength(points, startIndex, endIndex) {
 
   return distance;
 }
+/**
+ * Splits a path into multiple segments of equal length
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param Number distance Length of each segments (in meters)
+ * @param Number startIndex First index to use in the array (optional, defaults to first element)
+ * @param Number endIndex Last index to use in the array (optional, defaults to last element)
+ * @returns Number[] List of starting indexes of each segments (starting index not included)
+ */
+
 
 function splitByLength(points, distance, startIndex, endIndex) {
   var start = startIndex === undefined ? 0 : startIndex;
@@ -117,6 +141,14 @@ function splitByLength(points, distance, startIndex, endIndex) {
 
   return paths;
 }
+/**
+ * Returns the point closest to `latlng` in the list `points`.
+ * This is a lazy port of L.Polyline.closestLayerPoint to use L.LatLng objects instead of Point.
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param L.LatLng latlng Point
+ * @returns [L.LatLng, Number] L.LatLng found in the list and its index in the array
+ */
+
 
 function closestLatlng(points, latlng) {
   var minDistance = Infinity;
@@ -137,53 +169,76 @@ function closestLatlng(points, latlng) {
 }
 
 L.Polyline.include({
+  /**
+   * Stops animation
+   * @returns this
+   */
   _stop: function _stop() {
     this._map.off('moveend', this._flyToNext);
+
+    return this;
   },
+
+  /**
+   * Sets the view of the map (geographical center and zoom) performing a smooth pan-zoom animation along the polyline.
+   * @param L.LatLng targetCenter Coordinates to fly to
+   * @param Number targetZoom New zoom value (optional)
+   * @param Zoom/pan options options Options
+   * @returns this
+   */
   flyTo: function flyTo(targetCenter, targetZoom, options) {
     var _this2 = this;
 
-    var _options = options || {};
+    /* eslint-disable no-param-reassign */
+    options = options || {};
 
-    if (_options.animate === false || !L.Browser.any3d) {
-      return this._map.setView(targetCenter, targetZoom, _options);
+    var startZoom = this._map.getZoom();
+
+    targetZoom = targetZoom === undefined ? startZoom : targetZoom;
+
+    if (options.animate === false || !L.Browser.any3d) {
+      return this._map.setView(targetCenter, targetZoom, options);
     }
 
-    var _targetZoom = targetZoom === undefined ? this._map.getZoom() : targetZoom;
+    var duration = options.duration ? options.duration : 5;
 
-    var duration = _options.duration ? _options.duration : 5;
-
-    var center = this._map.getCenter();
+    var startCenter = this._map.getCenter();
 
     var points = getLatLngsFlatten(this);
 
-    var _closestLatlng = closestLatlng(points, center),
+    var _closestLatlng = closestLatlng(points, startCenter),
         _closestLatlng2 = (0, _slicedToArray2["default"])(_closestLatlng, 2),
-        start = _closestLatlng2[0],
+        startLatLng = _closestLatlng2[0],
         startIndex = _closestLatlng2[1];
 
     var _closestLatlng3 = closestLatlng(points, targetCenter),
         _closestLatlng4 = (0, _slicedToArray2["default"])(_closestLatlng3, 2),
-        end = _closestLatlng4[0],
+        endLatLng = _closestLatlng4[0],
         endIndex = _closestLatlng4[1];
 
-    var distance = getLength(points, startIndex, endIndex);
-    var indexes = splitByLength(points, distance / (duration * 10), startIndex, endIndex);
-    var stepDuration = duration / indexes.length;
-    var currentIndex = 0;
+    var flyDistance = getLength(points, startIndex, endIndex);
+    var keyframesFlyIndexes = splitByLength(points, flyDistance / (duration * 10), startIndex, endIndex);
+    var keyframesNumber = keyframesFlyIndexes.length;
+    var zoomStep = (targetZoom - startZoom) / keyframesNumber;
+    var keyframesZoomValues = [];
+
+    for (var i = 0; i < keyframesNumber; i += 1) {
+      keyframesZoomValues.push(startZoom + zoomStep * i);
+    }
+
+    var keyframesDuration = duration / keyframesNumber;
+    var currentKeyframe = 0;
 
     function next() {
       var _this = this;
 
-      if (currentIndex < indexes.length) {
-        var dest = points[indexes[currentIndex]];
-
-        this._map.flyTo(dest, _targetZoom, {
+      if (currentKeyframe < keyframesNumber) {
+        this._map.flyTo(points[keyframesFlyIndexes[currentKeyframe]], keyframesZoomValues[currentKeyframe], {
           easeLinearity: 1,
-          duration: stepDuration
+          duration: keyframesDuration
         });
 
-        currentIndex += 1;
+        currentKeyframe += 1;
 
         this._flyToNext = function () {
           return next.call(_this);
@@ -191,16 +246,16 @@ L.Polyline.include({
 
         this._map.once('moveend', this._flyToNext);
       } else {
-        this._map.flyTo(end, _targetZoom, {
+        this._map.flyTo(endLatLng, targetZoom, {
           easeLinearity: 1,
-          duration: stepDuration
+          duration: keyframesDuration
         });
       }
     }
 
-    this._map.flyTo(start, _targetZoom, {
+    this._map.flyTo(startLatLng, startZoom, {
       easeLinearity: 1,
-      duration: stepDuration
+      duration: keyframesDuration
     });
 
     this._flyToNext = function () {

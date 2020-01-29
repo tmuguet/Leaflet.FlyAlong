@@ -1,5 +1,10 @@
 const L = require('leaflet');
 
+/**
+ * Returns a flat array of L.LatLng objects
+ * @param L.Polyline polyline Polyline object
+ * @returns L.LatLng[] Flat array
+ */
 function getLatLngsFlatten(polyline) {
   const latlngs = polyline.getLatLngs();
 
@@ -16,6 +21,14 @@ function getLatLngsFlatten(polyline) {
   return latlngs;
 }
 
+/**
+ * Returns the (estimated) distance of a path in meters.
+ * This is not a precise value, it just gives a rough estimate.
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param Number startIndex First index to use in the array (optional, defaults to first element)
+ * @param Number endIndex Last index to use in the array (optional, defaults to last element)
+ * @returns Number Distance in meters
+ */
 function getLength(points, startIndex, endIndex) {
   const start = startIndex === undefined ? 0 : startIndex;
   const end = endIndex === undefined ? points.length : endIndex;
@@ -28,6 +41,14 @@ function getLength(points, startIndex, endIndex) {
   return distance;
 }
 
+/**
+ * Splits a path into multiple segments of equal length
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param Number distance Length of each segments (in meters)
+ * @param Number startIndex First index to use in the array (optional, defaults to first element)
+ * @param Number endIndex Last index to use in the array (optional, defaults to last element)
+ * @returns Number[] List of starting indexes of each segments (starting index not included)
+ */
 function splitByLength(points, distance, startIndex, endIndex) {
   const start = startIndex === undefined ? 0 : startIndex;
   const end = endIndex === undefined ? points.length : endIndex;
@@ -47,6 +68,13 @@ function splitByLength(points, distance, startIndex, endIndex) {
   return paths;
 }
 
+/**
+ * Returns the point closest to `latlng` in the list `points`.
+ * This is a lazy port of L.Polyline.closestLayerPoint to use L.LatLng objects instead of Point.
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param L.LatLng latlng Point
+ * @returns [L.LatLng, Number] L.LatLng found in the list and its index in the array
+ */
 function closestLatlng(points, latlng) {
   let minDistance = Infinity;
   let minLatlng = null;
@@ -64,8 +92,13 @@ function closestLatlng(points, latlng) {
 }
 
 L.Polyline.include({
+  /**
+   * Stops animation
+   * @returns this
+   */
   _stop() {
     this._map.off('moveend', this._flyToNext);
+    return this;
   },
 
   /**

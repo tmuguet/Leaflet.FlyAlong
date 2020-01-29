@@ -1,0 +1,52 @@
+{
+  "name": "leaflet-flyalong",
+  "version": "0.1.0",
+  "description": "Fly along a path",
+  "main": "dist/leaflet.flyalong.min.js",
+  "scripts": {
+    "browserify:polyfill": "browserify -t [ babelify --presets [ @babel/preset-env ] --plugins [ @babel/plugin-transform-runtime ] ] -t browserify-shim -p browserify-derequire -o dist/leaflet.flyalong.polyfill.js src/index.js",
+    "browserify:noruntime": "browserify -t [ babelify --presets [ @babel/preset-env ] ] -t browserify-shim -p browserify-derequire -o dist/leaflet.flyalong.js src/index.js",
+    "uglify:polyfill": "uglifyjs dist/leaflet.flyalong.polyfill.js -o dist/leaflet.flyalong.polyfill.min.js",
+    "uglify:noruntime": "uglifyjs dist/leaflet.flyalong.js -o dist/leaflet.flyalong.min.js",
+    "bundle:polyfill": "npm run browserify:polyfill && npm run uglify:polyfill",
+    "bundle:noruntime": "npm run browserify:noruntime && npm run uglify:noruntime",
+    "bundle": "npm run bundle:polyfill && npm run bundle:noruntime",
+    "eslint": "eslint src/*.js",
+    "validate": "npm run bundle && npm run eslint",
+    "version": "npm run validate"
+  },
+  "repository": "github:tmuguet/Leaflet.FlyAlong",
+  "author": {
+    "name": "Thomas Muguet",
+    "email": "hi@tmuguet.me",
+    "url": "https://tmuguet.me/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tmuguet/Leaflet.FlyAlong/issues"
+  },
+  "homepage": "https://github.com/tmuguet/Leaflet.FlyAlong",
+  "browserify-shim": {
+    "leaflet": "global:L"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.7",
+    "@babel/plugin-transform-runtime": "^7.7.6",
+    "@babel/polyfill": "^7.7.0",
+    "@babel/preset-env": "^7.7.7",
+    "@babel/runtime": "^7.7.7",
+    "babelify": "^10.0.0",
+    "browserify": "^16.5.0",
+    "browserify-derequire": "^1.0.1",
+    "browserify-shim": "^3.8.14",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^13.2.0",
+    "eslint-plugin-import": "^2.19.1",
+    "uglify-js": "^3.7.2"
+  },
+  "dependencies": {
+    "install": "^0.12.1",
+    "leaflet": "^1.6.0",
+    "npm": "^6.13.4"
+  }
+}

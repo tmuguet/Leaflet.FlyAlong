@@ -68,39 +68,59 @@ L.Polyline.include({
     this._map.off('moveend', this._flyToNext);
   },
 
+  /**
+   * Sets the view of the map (geographical center and zoom) performing a smooth pan-zoom animation along the polyline.
+   * @param L.LatLng targetCenter Coordinates to fly to
+   * @param Number targetZoom New zoom value (optional)
+   * @param Zoom/pan options options Options
+   * @returns this
+   */
   flyTo(targetCenter, targetZoom, options) {
-    const _options = options || {};
-    if (_options.animate === false || !L.Browser.any3d) {
-      return this._map.setView(targetCenter, targetZoom, _options);
-    }
-    const _targetZoom = targetZoom === undefined ? this._map.getZoom() : targetZoom;
-    const duration = _options.duration ? _options.duration : 5;
+    /* eslint-disable no-param-reassign */
+    options = options || {};
+    const startZoom = this._map.getZoom();
+    targetZoom = targetZoom === undefined ? startZoom : targetZoom;
 
-    const center = this._map.getCenter();
+    if (options.animate === false || !L.Browser.any3d) {
+      return this._map.setView(targetCenter, targetZoom, options);
+    }
+    const duration = options.duration ? options.duration : 5;
+
+    const startCenter = this._map.getCenter();
     const points = getLatLngsFlatten(this);
 
-    const [start, startIndex] = closestLatlng(points, center);
-    const [end, endIndex] = closestLatlng(points, targetCenter);
-    const distance = getLength(points, startIndex, endIndex);
-    const indexes = splitByLength(points, distance / (duration * 10), startIndex, endIndex);
+    const [startLatLng, startIndex] = closestLatlng(points, startCenter);
+    const [endLatLng, endIndex] = closestLatlng(points, targetCenter);
+    const flyDistance = getLength(points, startIndex, endIndex);
+    const keyframesFlyIndexes = splitByLength(points, flyDistance / (duration * 10), startIndex, endIndex);
+    const keyframesNumber = keyframesFlyIndexes.length;
 
-    const stepDuration = duration / indexes.length;
+    const zoomStep = (targetZoom - startZoom) / keyframesNumber;
+    const keyframesZoomValues = [];
+    for (let i = 0; i < keyframesNumber; i += 1) {
+      keyframesZoomValues.push(startZoom + zoomStep * i);
+    }
 
-    let currentIndex = 0;
+    const keyframesDuration = duration / keyframesNumber;
+
+    let currentKeyframe = 0;
 
     function next() {
-      if (currentIndex < indexes.length) {
-        const dest = points[indexes[currentIndex]];
-        this._map.flyTo(dest, _targetZoom, { easeLinearity: 1, duration: stepDuration });
-        currentIndex += 1;
+      if (currentKeyframe < keyframesNumber) {
+        this._map.flyTo(
+          points[keyframesFlyIndexes[currentKeyframe]],
+          keyframesZoomValues[currentKeyframe],
+          { easeLinearity: 1, duration: keyframesDuration },
+        );
+        currentKeyframe += 1;
         this._flyToNext = () => next.call(this);
         this._map.once('moveend', this._flyToNext);
       } else {
-        this._map.flyTo(end, _targetZoom, { easeLinearity: 1, duration: stepDuration });
+        this._map.flyTo(endLatLng, targetZoom, { easeLinearity: 1, duration: keyframesDuration });
       }
     }
 
-    this._map.flyTo(start, _targetZoom, { easeLinearity: 1, duration: stepDuration });
+    this._map.flyTo(startLatLng, startZoom, { easeLinearity: 1, duration: keyframesDuration });
     this._flyToNext = () => next.call(this);
     this._map.once('moveend', this._flyToNext);
 

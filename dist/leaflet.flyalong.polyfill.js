@@ -250,8 +250,14 @@ L.Polyline.include({
           easeLinearity: 1,
           duration: keyframesDuration
         });
+
+        this._map.once('moveend', function () {
+          return _this.fire('FlyAlong:moveend');
+        });
       }
     }
+
+    this.fire('FlyAlong:movestart');
 
     this._map.flyTo(startLatLng, startZoom, {
       easeLinearity: 1,

@@ -150,8 +150,11 @@ L.Polyline.include({
         this._map.once('moveend', this._flyToNext);
       } else {
         this._map.flyTo(endLatLng, targetZoom, { easeLinearity: 1, duration: keyframesDuration });
+        this._map.once('moveend', () => this.fire('FlyAlong:moveend'));
       }
     }
+
+    this.fire('FlyAlong:movestart');
 
     this._map.flyTo(startLatLng, startZoom, { easeLinearity: 1, duration: keyframesDuration });
     this._flyToNext = () => next.call(this);

@@ -1551,6 +1551,13 @@
       var polyline = L.polyline(track1);
       polyline.addTo(map);
 
+      polyline.on('FlyAlong:movestart', function () {
+        console.log('Started animation');
+      });
+      polyline.on('FlyAlong:moveend', function () {
+        console.log('Finished animation');
+      });
+
       polyline.flyTo(L.latLng(44.988528, 6.078066), 15, { duration: 10 });
       // setTimeout(function () { polyline._stop(); }, 5000);
     };

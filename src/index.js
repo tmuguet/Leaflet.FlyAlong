@@ -111,8 +111,8 @@ L.Polyline.include({
   flyTo(targetCenter, targetZoom, options) {
     /* eslint-disable no-param-reassign */
     options = options || {};
-    const startZoom = this._map.getZoom();
-    targetZoom = targetZoom === undefined ? startZoom : targetZoom;
+    const startZoom = parseInt(this._map.getZoom());
+    targetZoom = parseInt(targetZoom === undefined ? startZoom : targetZoom);
 
     if (this._flyToNext) this._stop();
 

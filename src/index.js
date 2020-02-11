@@ -88,8 +88,78 @@ function closestLatlng(points, latlng) {
       minIndex = i;
     }
   }
-  return [minLatlng, minIndex];
+  return [minLatlng, minIndex, minDistance];
 }
+
+/**
+ * Returns the point closest to `latlng` in the list `points`.
+ * This is a lazy port of L.Polyline.closestLayerPoint to use L.LatLng objects instead of Point.
+ * @param L.LatLng[] points Array of L.LatLng objects
+ * @param L.LatLng latlng Point
+ * @returns [L.LatLng, Number] L.LatLng found in the list and its index in the array
+ */
+function closestLayerLatlng(layers, latlng) {
+  let minDistance = Infinity;
+  let minLatlng = null;
+  let minIndex = null;
+  let minLayer = null;
+  let minLayerIndex = null;
+
+  for (let i = 0; i < layers.length; i += 1) {
+    if (layers[i] instanceof L.Polyline) {
+      const points = getLatLngsFlatten(layers[i]);
+      const [layerMinLatlng, layerMinIndex, layerMinDistance] = closestLatlng(points, latlng);
+      if (layerMinDistance < minDistance) {
+        minDistance = layerMinDistance;
+        minLatlng = layerMinLatlng;
+        minIndex = layerMinIndex;
+        minLayer = layers[i];
+        minLayerIndex = [i];
+      }
+    } else if (layers[i] instanceof L.FeatureGroup) {
+      const sublayers = layers[i].getLayers();
+      const [layerMinLayer, layerMinLatlng, layerMinIndex, layerMinDistance] = closestLayerLatlng(sublayers, latlng);
+      if (layerMinDistance < minDistance) {
+        minDistance = layerMinDistance;
+        minLatlng = layerMinLatlng;
+        minIndex = layerMinIndex;
+        minLayer = layerMinLayer;
+        minLayerIndex = [i].concat(layerMinIndex);
+      }
+    }
+  }
+  return [minLayer, minLatlng, minIndex, minLayerIndex];
+}
+
+L.FeatureGroup.include({
+  /**
+   * Sets the view of the map (geographical center and zoom) performing a smooth pan-zoom animation along the polyline.
+   * @param L.LatLng targetCenter Coordinates to fly to
+   * @param Number targetZoom New zoom value (optional)
+   * @param Zoom/pan options options Options
+   * @returns this
+   */
+  flyTo(targetCenter, targetZoom, options) {
+    const startCenter = this._map.getCenter();
+
+    const layers = this.getLayers();
+    // eslint-disable-next-line prefer-const
+    // eslint-disable-next-line no-unused-vars
+    const [startLayer, startLatLng, startIndex, startLayerIndex] = closestLayerLatlng(layers, startCenter);
+    // eslint-disable-next-line prefer-const
+    // eslint-disable-next-line no-unused-vars
+    const [endLayer, endLatLng, endIndex, endLayerIndex] = closestLayerLatlng(layers, targetCenter);
+
+    if (JSON.stringify(startLayerIndex) === JSON.stringify(endLayerIndex)) {
+      startLayer.flyTo(targetCenter, targetZoom, options);
+    } else {
+      // TODO
+      console.log('Not supported yet');
+    }
+
+    return this;
+  },
+});
 
 L.Polyline.include({
   /**
@@ -125,9 +195,9 @@ L.Polyline.include({
     const points = getLatLngsFlatten(this);
 
     // eslint-disable-next-line prefer-const
-    let [startLatLng, startIndex] = closestLatlng(points, startCenter);
+    let [startLatLng, startIndex, startDistance] = closestLatlng(points, startCenter);
     // eslint-disable-next-line prefer-const
-    let [endLatLng, endIndex] = closestLatlng(points, targetCenter);
+    let [endLatLng, endIndex, endDistance] = closestLatlng(points, targetCenter);
 
     if (startIndex > endIndex) {
       points.reverse();
@@ -135,7 +205,7 @@ L.Polyline.include({
       endIndex = points.length - endIndex - 1;
     }
 
-    const flyDistance = getLength(points, startIndex, endIndex);
+    const flyDistance = getLength(points, startIndex, endIndex) + startDistance + endDistance;
     const keyframesFlyIndexes = splitByLength(points, flyDistance / (duration * 10), startIndex, endIndex);
     const keyframesNumber = keyframesFlyIndexes.length;
 
